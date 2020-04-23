@@ -369,3 +369,84 @@
                              (* -1.0 (square x))))
              (lambda (i) (- (* 2 i) 1.0))
              k))
+
+;; Exercise 1.40
+(define (cubic a b c)
+  (lambda (x) (+ (cube x) (* a (square x)) (* b x) c)))
+
+;; Exercise 1.41
+(define (double f)
+  (lambda (x) (f (f x))))
+
+;; Exercise 1.42
+(define (compose f g)
+  (lambda (x) (f (g x))))
+
+;; Exercise 1.43
+(define (repeated f n)
+  (if (= n 1)
+      f
+      (compose f (repeated f (- n 1)))))
+(define (repeated-iter f n)
+  (define (iter i g)
+    (if (= i n)
+        g
+        (iter (+ i 1) (compose f g))))
+  (iter 1 f))
+(define (repeated-log f n)
+  (cond ((= n 1) f)
+        ((even? n) (repeated-log (compose f f) (/ n 2)))
+        (else (compose f (repeated-log f (- n 1))))))
+
+;; Exercise 1.44
+(define (sum-list l)
+  (if (null? l)
+      0
+      (+ (car l) (sum-list (cdr l)))))
+(define (average-list l)
+  (/ (sum-list l) (length l)))
+(define (smooth f)
+  (lambda (x) (average-list (list (f (- x dx))
+                                  (f x)
+                                  (f (+ x dx))))))
+(define (n-fold-smoothed f n)
+  ((repeated smooth n) f))
+
+;; Exercise 1.45
+;; One average-damp works until fourth roots
+;; Two average-damp's work until eighth roots
+;; Three average-damp's work until sixteenth roots
+;; I see a pattern...
+(define (average-damp f)
+  (lambda (x) (average (list x (f x)))))
+(define (sqrt x)
+  (fixed-point (average-damp (lambda (y) (/ x y)))
+               1.0))
+(define (lb x)
+  (/ (log x) (log 2)))
+(define (nth-root k n)
+  (fixed-point
+   ((repeated average-damp (floor (lb n))) (lambda (x) (/ k (my-expt x (- n 1)))))
+   1.0))
+(define (difference a b)
+  (abs (- a b)))
+(define (test-nth-root base exp)
+  (< (difference base
+                 (nth-root (my-expt base exp)
+                           exp))
+     0.01))
+
+;; Exercise 1.46
+(define (iterative-improve good-enough? improve-guess)
+  (lambda (guess)
+    (define (iterate g)
+      (if (good-enough? g)
+          g
+          (iterate (improve-guess g))))
+    (iterate guess)))
+(define (iterative-improve-sqrt x)
+  ((iterative-improve (lambda (g) (< (difference (square g) x) 0.001))
+                      (lambda (g) (average (list g (/ x g))))) 1.0))
+(define (iterative-improve-fixed-point func first-guess)
+  ((iterative-improve (lambda (g) (< (difference g (func g)) 0.00001))
+                      func) first-guess))
